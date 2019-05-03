@@ -50,7 +50,9 @@ class Wifi {
   }
 
   static Future<WifiState> disconnect() async {
-    int state = await _channel.invokeMethod('disconnect');
+    final Map<String, dynamic> params = {
+    };
+    int state = await _channel.invokeMethod('disconnect', params);
     switch (state) {
       case 0:
         return WifiState.error;

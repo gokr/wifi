@@ -250,6 +250,7 @@ public class WifiDelegate implements PluginRegistry.RequestPermissionsResultList
 
     private void disconnect() {        
         wifiManager.disconnect();
+        clearMethodCallAndResult();
     }
 
     private WifiConfiguration createWifiConfig(String ssid, String Password) {
