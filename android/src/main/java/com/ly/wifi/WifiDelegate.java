@@ -248,7 +248,9 @@ public class WifiDelegate implements PluginRegistry.RequestPermissionsResultList
         disconnect(); 
     }
 
-    private void disconnect() {        
+    private void disconnect() {   
+        int netId = wifiManager.getConnectionInfo().getNetworkId();
+        boolean removed = wifiManager.removeNetwork(netId);
         wifiManager.disconnect();
         clearMethodCallAndResult();
     }

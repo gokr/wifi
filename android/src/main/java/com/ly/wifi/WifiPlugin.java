@@ -50,6 +50,7 @@ public class WifiPlugin implements MethodCallHandler {
                 break;
             case "disconnect":
                 delegate.disconnect(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;
