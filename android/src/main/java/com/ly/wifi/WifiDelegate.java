@@ -236,6 +236,10 @@ public class WifiDelegate implements PluginRegistry.RequestPermissionsResultList
         clearMethodCallAndResult();
     }
 
+    private void disconnect() {        
+        wifiManager.disconnect();
+    }
+
     private WifiConfiguration createWifiConfig(String ssid, String Password) {
         WifiConfiguration config = new WifiConfiguration();
         config.SSID = "\"" + ssid + "\"";
