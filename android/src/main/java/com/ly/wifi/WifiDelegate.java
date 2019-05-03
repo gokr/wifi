@@ -245,7 +245,7 @@ public class WifiDelegate implements PluginRegistry.RequestPermissionsResultList
             permissionManager.askForPermission(Manifest.permission.CHANGE_WIFI_STATE, REQUEST_CHANGE_WIFI_STATE_PERMISSION);
             return;
         }
-        disconnect();
+        disconnect(); 
     }
 
     private void disconnect() {        
