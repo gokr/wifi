@@ -236,6 +236,18 @@ public class WifiDelegate implements PluginRegistry.RequestPermissionsResultList
         clearMethodCallAndResult();
     }
 
+    public void disconnect(MethodCall methodCall, MethodChannel.Result result) {
+        if (!setPendingMethodCallAndResult(methodCall, result)) {
+            finishWithAlreadyActiveError();
+            return;
+        }
+        if (!permissionManager.isPermissionGranted(Manifest.permission.CHANGE_WIFI_STATE)) {
+            permissionManager.askForPermission(Manifest.permission.CHANGE_WIFI_STATE, REQUEST_CHANGE_WIFI_STATE_PERMISSION);
+            return;
+        }
+        disconnect();
+    }
+
     private void disconnect() {        
         wifiManager.disconnect();
     }
