@@ -49,8 +49,9 @@ class Wifi {
     }
   }
 
-  static Future<WifiState> disconnect() async {
+  static Future<WifiState> disconnect(String ssid) async {
     final Map<String, dynamic> params = {
+      'ssid': ssid,
     };
     int state = await _channel.invokeMethod('disconnect', params);
     switch (state) {

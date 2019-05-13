@@ -53,7 +53,14 @@
                 }
             }];
         }
-    } else {
+    } else if ([@"disconnect" isEqualToString:call.method]){
+        if (@available(iOS 11.0, *)) {
+            NSString *ssid = argsMap[@"ssid"];
+            [[NEHotspotConfigurationManager sharedManager] removeConfigurationForSSID:ssid];
+            result(@0);
+        }
+    }
+     else {
         result(FlutterMethodNotImplemented);
     }
 }
