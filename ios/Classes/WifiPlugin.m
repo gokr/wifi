@@ -55,9 +55,10 @@
         }
     } else if ([@"disconnect" isEqualToString:call.method]){
         if (@available(iOS 11.0, *)) {
+            NSDictionary* argsMap = call.arguments;
             NSString *ssid = argsMap[@"ssid"];
             [[NEHotspotConfigurationManager sharedManager] removeConfigurationForSSID:ssid];
-            result(@0);
+            result(@1);
         }
     }
      else {
