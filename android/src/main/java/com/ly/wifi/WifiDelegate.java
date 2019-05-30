@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
@@ -69,6 +70,9 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
             MethodCall methodCall,
             PermissionManager permissionManager) {
         this.networkReceiver = new NetworkChangeReceiver();
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
+        activity.registerReceiver(networkReceiver, intentFilter);
         this.activity = activity;
         this.wifiManager = wifiManager;
         this.result = result;
@@ -118,6 +122,25 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
         } else {
             finishWithError("unavailable", "wifi level not available.");
         }
+    }
+
+    public void deleteAccessPoint(MethodCall methodCall, MethodChannel.Result result) {
+        if (!setPendingMethodCallAndResult(methodCall, result)) {
+            finishWithAlreadyActiveError();
+            return;
+        }
+        launchDeleteAccessPoint();
+    }
+
+    private void launchDeleteAccessPoint() {
+        String ssid = methodCall.argument("ssid");
+        WifiConfiguration tempConfig = isExist(wifiManager, ssid);
+        if (tempConfig != null) {
+            wifiManager.removeNetwork(tempConfig.networkId);
+        }
+        result.success(true);
+        wifiManager.disconnect();
+        clearMethodCallAndResult();
     }
 
     public void getIP(MethodCall methodCall, MethodChannel.Result result) {
@@ -237,7 +260,9 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
         } else {
             // support Android O
             // https://stackoverflow.com/questions/50462987/android-o-wifimanager-enablenetwork-cannot-work
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
+                    (wifiManager.getWifiState() == WifiManager.WIFI_STATE_ENABLED &&
+                            wifiManager.getConnectionInfo().getNetworkId() == -1))  {
                 wifiManager.enableNetwork(netId, true);
                 wifiManager.reconnect();
                 result.success(1);

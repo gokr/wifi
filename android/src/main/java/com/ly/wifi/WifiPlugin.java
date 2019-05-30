@@ -63,6 +63,9 @@ public class WifiPlugin implements MethodCallHandler {
             case "disconnect":
                 delegate.disconnect(call, result);
                 break;
+            case "deleteAP":
+                delegate.deleteAccessPoint(call, result);
+                break;
             default:
                 result.notImplemented();
                 break;

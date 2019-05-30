@@ -9,19 +9,19 @@ void main() => runApp(new MyApp());
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return new MaterialApp(
+    return MaterialApp(
       title: 'Wifi',
-      theme: new ThemeData(
+      theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: new MyHomePage(),
+      home: MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
   @override
-  _MyHomePageState createState() => new _MyHomePageState();
+  _MyHomePageState createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
@@ -68,7 +68,10 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
               Offstage(
                 offstage: level == 0,
-                child: Image.asset(level == 0 ? 'images/wifi1.png' : 'images/wifi$level.png', width: 28, height: 21),
+                child: Image.asset(
+                    level == 0 ? 'images/wifi1.png' : 'images/wifi$level.png',
+                    width: 28,
+                    height: 21),
               ),
               Text(_wifiName),
             ],
@@ -112,12 +115,17 @@ class _MyHomePageState extends State<MyHomePage> {
             child: Text('connection'),
             onPressed: connection,
           ),
+          RaisedButton(
+            child: Text('remove access point'),
+            onPressed: remove,
+          ),
         ],
       );
     } else {
       return Column(children: <Widget>[
         ListTile(
-          leading: Image.asset('images/wifi${ssidList[index - 1].level}.png', width: 28, height: 21),
+          leading: Image.asset('images/wifi${ssidList[index - 1].level}.png',
+              width: 28, height: 21),
           title: Text(
             ssidList[index - 1].ssid,
             style: TextStyle(
@@ -159,6 +167,12 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<Null> connection() async {
     Wifi.connection(ssid, password).then((v) {
       print(v);
+    });
+  }
+
+  Future<Null> remove() async {
+    Wifi.remove(ssid).then((v) {
+      print("Removed " + ssid + ": " + v.toString());
     });
   }
 }

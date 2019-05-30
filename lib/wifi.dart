@@ -66,6 +66,13 @@ class Wifi {
     }
   }
 
+  static Future<WifiState> remove(String ssid) async {
+    final Map<String, dynamic> params = {
+      'ssid': ssid,
+    };
+    return await _channel.invokeMethod('deleteAP', params);
+  }
+
 }
 
 class WifiResult {
