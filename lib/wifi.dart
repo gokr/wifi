@@ -66,7 +66,7 @@ class Wifi {
     }
   }
 
-  static Future<WifiState> remove(String ssid) async {
+  static Future<bool> remove(String ssid) async {
     final Map<String, dynamic> params = {
       'ssid': ssid,
     };

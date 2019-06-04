@@ -260,9 +260,7 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
         } else {
             // support Android O
             // https://stackoverflow.com/questions/50462987/android-o-wifimanager-enablenetwork-cannot-work
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O ||
-                    (wifiManager.getWifiState() == WifiManager.WIFI_STATE_ENABLED &&
-                            wifiManager.getConnectionInfo().getNetworkId() == -1))  {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)  {
                 wifiManager.enableNetwork(netId, true);
                 wifiManager.reconnect();
                 result.success(1);
