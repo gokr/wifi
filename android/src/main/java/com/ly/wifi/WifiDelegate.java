@@ -13,7 +13,7 @@ import android.net.wifi.ScanResult;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.Build;
+import android.util.Log;
 
 import androidx.core.app.ActivityCompat;
 
@@ -30,14 +30,54 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.PluginRegistry;
 
-public class
-WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
-    private Activity activity;
+public class WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
+    private Context mContext;
     private WifiManager wifiManager;
     private PermissionManager permissionManager;
     private static final int REQUEST_ACCESS_FINE_LOCATION_PERMISSION = 1;
     private static final int REQUEST_CHANGE_WIFI_STATE_PERMISSION = 2;
     NetworkChangeReceiver networkReceiver;
+
+
+    private int mConnectNetworkId = -1;
+    private String mScanNetworkName = null;
+
+    private BroadcastReceiver mNetworkStateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            WifiInfo connectionInfo = wifiManager.getConnectionInfo();
+            if (connectionInfo.getNetworkId() == mConnectNetworkId) {
+                // Notify
+                mConnectNetworkId = -1;
+                result.success(1);
+                context.unregisterReceiver(this);
+                clearMethodCallAndResult();
+            }
+        }
+    };
+
+    private BroadcastReceiver mScanReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            List<ScanResult> results = wifiManager.getScanResults();
+
+            List<HashMap<String, Object>> returnedResults = new ArrayList<>();
+            for (ScanResult result : results) {
+                HashMap<String, Object> struct = new HashMap<>();
+                if (mScanNetworkName != null && result.SSID.contains(mScanNetworkName)) {
+                    struct.put("ssid", result.SSID);
+                    struct.put("level", result.level);
+                }
+                returnedResults.add(struct);
+            }
+
+            mScanNetworkName = null;
+            result.success(returnedResults);
+            context.unregisterReceiver(this);
+            clearMethodCallAndResult();
+        }
+    };
+
 
     interface PermissionManager {
         boolean isPermissionGranted(String permissionName);
@@ -70,10 +110,7 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
             MethodCall methodCall,
             PermissionManager permissionManager) {
         this.networkReceiver = new NetworkChangeReceiver();
-        IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
-        activity.registerReceiver(networkReceiver, intentFilter);
-        this.activity = activity;
+        this.mContext = activity.getApplicationContext();
         this.wifiManager = wifiManager;
         this.result = result;
         this.methodCall = methodCall;
@@ -81,6 +118,10 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
     }
 
     public void getSSID(MethodCall methodCall, MethodChannel.Result result) {
+        if (!permissionManager.isPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            permissionManager.askForPermission(Manifest.permission.ACCESS_FINE_LOCATION, REQUEST_ACCESS_FINE_LOCATION_PERMISSION);
+            return;
+        }
         if (!setPendingMethodCallAndResult(methodCall, result)) {
             finishWithAlreadyActiveError();
             return;
@@ -152,7 +193,7 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
     }
 
     private void launchIP() {
-        NetworkInfo info = ((ConnectivityManager) activity.getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
+        NetworkInfo info = ((ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE)).getActiveNetworkInfo();
         if (info != null && info.isConnected()) {
             if (info.getType() == ConnectivityManager.TYPE_MOBILE) {
                 try {
@@ -200,6 +241,15 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
     }
 
     private void launchWifiList() {
+        mScanNetworkName = methodCall.argument("key");
+
+        mContext.registerReceiver(mScanReceiver, new IntentFilter(WifiManager. SCAN_RESULTS_AVAILABLE_ACTION));
+        boolean result = wifiManager.startScan();
+        if (!result) {
+            finishWithError("wifi_manager", "Start scan failed");
+        }
+
+        /*Log.i(TAG, result ? "Wifi scan started" : "Wifi scan failed");
         String key = methodCall.argument("key");
         List<HashMap> list = new ArrayList<>();
         if (wifiManager != null) {
@@ -230,7 +280,7 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
             }
         }
         result.success(list);
-        clearMethodCallAndResult();
+        clearMethodCallAndResult();*/
     }
 
     public void connection(MethodCall methodCall, MethodChannel.Result result) {
@@ -248,27 +298,47 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
     private void connection() {
         String ssid = methodCall.argument("ssid");
         String password = methodCall.argument("password");
-        WifiConfiguration wifiConfig = createWifiConfig(ssid, password);
-        if (wifiConfig == null) {
-            finishWithError("unavailable", "wifi config is null!");
-            return;
-        }
-        int netId = wifiManager.addNetwork(wifiConfig);
-        if (netId == -1) {
-            result.success(0);
-            clearMethodCallAndResult();
-        } else {
-            // support Android O
-            // https://stackoverflow.com/questions/50462987/android-o-wifimanager-enablenetwork-cannot-work
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O)  {
-                wifiManager.enableNetwork(netId, true);
-                wifiManager.reconnect();
-                result.success(1);
-                clearMethodCallAndResult();
-            } else {
-                networkReceiver.connect(netId);
+
+        WifiConfiguration configuration = null;
+        String enclosedSSID = "\"" + ssid + "\"";
+
+        List<WifiConfiguration> configuredNetworks = wifiManager.getConfiguredNetworks();
+        for (WifiConfiguration conf : configuredNetworks) {
+            if (conf.SSID.equals(enclosedSSID)) {
+                configuration = conf;
+                break;
             }
-        }        
+        }
+
+        int networkId = -1;
+        if (configuration != null) {
+            networkId = configuration.networkId;
+        }
+        boolean removed = wifiManager.removeNetwork(networkId);
+        if (removed) {
+            configuration = null;
+        }
+
+        if (configuration == null) {
+            configuration = new WifiConfiguration();
+            configuration.SSID = enclosedSSID;
+            configuration.preSharedKey = "\"" + password + "\"";
+            networkId = wifiManager.addNetwork(configuration);
+        }
+
+        if (networkId != -1) {
+
+            mConnectNetworkId = networkId;
+
+            mContext.registerReceiver(mNetworkStateReceiver, new IntentFilter(WifiManager.NETWORK_STATE_CHANGED_ACTION));
+            boolean addResult = wifiManager.enableNetwork(networkId, true);
+
+            if (!addResult) {
+                finishWithError("wifi_manager", "Error while enabling the network");
+            }
+        } else {
+            finishWithError("wifi_manager", "Error while adding the network");
+        }
     }
     
     public void disconnect(MethodCall methodCall, MethodChannel.Result result) {
@@ -382,11 +452,11 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
         public void onReceive(Context context, Intent intent) {
             NetworkInfo info = intent.getParcelableExtra(ConnectivityManager.EXTRA_NETWORK_INFO);
             if (info.getState() == NetworkInfo.State.DISCONNECTED && willLink) {
-                wifiManager.enableNetwork(netId, true);
-                wifiManager.reconnect();
-                result.success(1);
-                willLink = false;
-                clearMethodCallAndResult();
+                // wifiManager.enableNetwork(netId, true);
+                // wifiManager.reconnect();
+                // result.success(1);
+                // willLink = false;
+                // clearMethodCallAndResult();
             }
         }
 
