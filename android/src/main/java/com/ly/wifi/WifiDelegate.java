@@ -10,6 +10,7 @@ import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.wifi.ScanResult;
+import android.net.wifi.SupplicantState;
 import android.net.wifi.WifiConfiguration;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
@@ -53,7 +54,7 @@ public class WifiDelegate implements PluginRegistry.RequestPermissionsResultList
         @Override
         public void onReceive(Context context, Intent intent) {
             WifiInfo connectionInfo = wifiManager.getConnectionInfo();
-            if (connectionInfo.getNetworkId() == mConnectNetworkId) {
+            if (connectionInfo.getNetworkId() == mConnectNetworkId && connectionInfo.getSupplicantState() == SupplicantState.COMPLETED) {
                 // Notify
                 mConnectNetworkId = -1;
                 result.success(1);
