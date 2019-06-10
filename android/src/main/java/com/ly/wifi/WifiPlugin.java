@@ -45,25 +45,25 @@ public class WifiPlugin implements MethodCallHandler {
             return;
         }
         switch (call.method) {
-            case "ssid":
+            case WifiDelegate.METHOD_SSID:
                 delegate.getSSID(call, result);
                 break;
-            case "level":
+            case WifiDelegate.METHOD_LEVEL:
                 delegate.getLevel(call, result);
                 break;
-            case "ip":
+            case WifiDelegate.METHOD_IP:
                 delegate.getIP(call, result);
                 break;
-            case "list":
+            case WifiDelegate.METHOD_LIST:
                 delegate.getWifiList(call, result);
                 break;
-            case "connection":
+            case WifiDelegate.METHOD_CONNECTION:
                 delegate.connection(call, result);
                 break;
-            case "disconnect":
+            case WifiDelegate.METHOD_DISCONNECT:
                 delegate.disconnect(call, result);
                 break;
-            case "deleteAP":
+            case WifiDelegate.METHOD_DELETEAP:
                 delegate.deleteAccessPoint(call, result);
                 break;
             default:

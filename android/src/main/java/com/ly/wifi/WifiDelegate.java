@@ -38,6 +38,13 @@ public class WifiDelegate implements PluginRegistry.RequestPermissionsResultList
     private static final int REQUEST_CHANGE_WIFI_STATE_PERMISSION = 2;
     NetworkChangeReceiver networkReceiver;
 
+    public static final String METHOD_SSID = "ssid";
+    public static final String METHOD_LEVEL = "level";
+    public static final String METHOD_IP = "ip";
+    public static final String METHOD_LIST = "list";
+    public static final String METHOD_CONNECTION = "connection";
+    public static final String METHOD_DISCONNECT = "disconnect";
+    public static final String METHOD_DELETEAP = "deleteAP";
 
     private int mConnectNetworkId = -1;
     private String mScanNetworkName = null;
@@ -61,14 +68,14 @@ public class WifiDelegate implements PluginRegistry.RequestPermissionsResultList
         public void onReceive(Context context, Intent intent) {
             List<ScanResult> results = wifiManager.getScanResults();
 
-            List<HashMap<String, Object>> returnedResults = new ArrayList<>();
+            List<HashMap> returnedResults = new ArrayList<>();
             for (ScanResult result : results) {
                 HashMap<String, Object> struct = new HashMap<>();
                 if (mScanNetworkName != null && result.SSID.contains(mScanNetworkName)) {
                     struct.put("ssid", result.SSID);
                     struct.put("level", result.level);
+                    returnedResults.add(struct);
                 }
-                returnedResults.add(struct);
             }
 
             mScanNetworkName = null;
@@ -118,12 +125,12 @@ public class WifiDelegate implements PluginRegistry.RequestPermissionsResultList
     }
 
     public void getSSID(MethodCall methodCall, MethodChannel.Result result) {
-        if (!permissionManager.isPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) {
-            permissionManager.askForPermission(Manifest.permission.ACCESS_FINE_LOCATION, REQUEST_ACCESS_FINE_LOCATION_PERMISSION);
-            return;
-        }
         if (!setPendingMethodCallAndResult(methodCall, result)) {
             finishWithAlreadyActiveError();
+            return;
+        }
+        if (!permissionManager.isPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            permissionManager.askForPermission(Manifest.permission.ACCESS_FINE_LOCATION, REQUEST_ACCESS_FINE_LOCATION_PERMISSION);
             return;
         }
         launchSSID();
@@ -411,7 +418,14 @@ public class WifiDelegate implements PluginRegistry.RequestPermissionsResultList
         switch (requestCode) {
             case REQUEST_ACCESS_FINE_LOCATION_PERMISSION:
                 if (permissionGranted) {
-                    launchWifiList();
+                    String method = methodCall.method;
+                    if (method != null) {
+                        if (method.equals(METHOD_LIST)) {
+                            launchWifiList();
+                        } else if (method.equals(METHOD_SSID)) {
+                            launchSSID();
+                        }
+                    }
                 }
                 break;
             case REQUEST_CHANGE_WIFI_STATE_PERMISSION:
