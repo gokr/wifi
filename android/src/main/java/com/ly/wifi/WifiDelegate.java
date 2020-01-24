@@ -230,13 +230,17 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
         
         connection();
     }
-
+    
     public void disconnect(MethodCall methodCall, MethodChannel.Result result) {
         if (!setPendingMethodCallAndResult(methodCall, result)) {
             finishWithAlreadyActiveError();
             return;
         }
-        disconnect();
+        if (!permissionManager.isPermissionGranted(Manifest.permission.CHANGE_WIFI_STATE)) {
+            permissionManager.askForPermission(Manifest.permission.CHANGE_WIFI_STATE, REQUEST_CHANGE_WIFI_STATE_PERMISSION);
+            return;
+        }
+        disconnect(); 
     }
 
     private void connection() {
@@ -317,26 +321,16 @@ WifiDelegate implements PluginRegistry.RequestPermissionsResultListener {
             }
         }        
     }
-    
-    public void disconnect(MethodCall methodCall, MethodChannel.Result result) {
-        if (!setPendingMethodCallAndResult(methodCall, result)) {
-            finishWithAlreadyActiveError();
-            return;
-        }
-        if (!permissionManager.isPermissionGranted(Manifest.permission.CHANGE_WIFI_STATE)) {
-            permissionManager.askForPermission(Manifest.permission.CHANGE_WIFI_STATE, REQUEST_CHANGE_WIFI_STATE_PERMISSION);
-            return;
-        }
-        disconnect(); 
-    }
 
-    private void disconnect() {   
+
+    /*private void disconnect() {   
         int netId = wifiManager.getConnectionInfo().getNetworkId();
         boolean removed = wifiManager.removeNetwork(netId);
         wifiManager.disconnect();
         clearMethodCallAndResult();
-    }
+    }*/
 
+    // Not sure why this is... done this way
     private void disconnect() {
         String ssid = methodCall.argument("ssid");
         WifiConfiguration wifiConfig = createWifiConfig(ssid, "");
